@@ -16,17 +16,23 @@ public class PlayerController : MonoBehaviour
     private int wherePlayerSeeing = 1;
 
     [Header("Jump Values")]
+    [SerializeField] float jumpForce;
+    [SerializeField] float jumpAjust = 0.5f;
+    private bool canJump = false;
     private bool inputJumpWasPressed;
     private bool inputJumpWasRelease;
     private bool isFalling = false;
     private bool isJumping = false;
-    [SerializeField] float jumpForce;
-    [SerializeField] float jumpAjust = 0.5f;
 
     [Header("Checking Ground")]
     [SerializeField] float checkGroundRadius;
     [SerializeField] Transform checkGroundLocal;
     [SerializeField] LayerMask checkGroundLayer;
+
+    [Header("Attacks")]
+    public bool canAttack = true;
+    public int stateAttack = 0;
+    private bool inputAttackWasPressed;
 
     private void Awake()
     {
@@ -40,6 +46,7 @@ public class PlayerController : MonoBehaviour
         UpdateStates();
         UpdateAnimation();
         Jump();
+        Attack();
     }
 
     private void FixedUpdate() 
@@ -56,6 +63,7 @@ public class PlayerController : MonoBehaviour
         moveX = Input.GetAxisRaw("Horizontal");
         inputJumpWasPressed = Input.GetKeyDown(KeyCode.Space);
         inputJumpWasRelease = Input.GetKeyUp(KeyCode.Space);
+        inputAttackWasPressed = Input.GetMouseButtonDown(0);
     }
 
     private void Move()
@@ -81,9 +89,13 @@ public class PlayerController : MonoBehaviour
 
     private void Jump()
     {
-        if (inputJumpWasPressed)
+        if (isTouchingGround) canJump = true;
+        if (inputJumpWasPressed && canJump)
         {
             rb.velocity = new Vector2(rb.velocity.x * moveX, jumpForce);
+            AnimationTrigger("Jump");
+            isJumping = true;
+            canJump = false;
         }
         
         if(inputJumpWasRelease && rb.velocity.y > 0f)
@@ -97,6 +109,7 @@ public class PlayerController : MonoBehaviour
         anim.SetBool("IsFalling", isFalling);
         anim.SetBool("IsJumping", isJumping);
         anim.SetBool("IsWalking", rb.velocity.x != 0);
+        anim.SetInteger("qualAtaque", stateAttack);
     }
 
     public void AnimationTrigger(string trigger)
@@ -114,12 +127,6 @@ public class PlayerController : MonoBehaviour
             
         }
 
-        if (rb.velocity.y > 0 && !isJumping)
-        {
-            AnimationTrigger("Jump");
-            isJumping = true;
-        }
-
         if (rb.velocity.y == 0)
         {
             isJumping = false;
@@ -130,7 +137,21 @@ public class PlayerController : MonoBehaviour
     private void CheckIsTouchingGround()
     {
         isTouchingGround = Physics2D.OverlapCircle(checkGroundLocal.position, checkGroundRadius, checkGroundLayer);
-    } 
+    }
+
+    private void Attack()
+    {
+        if (canAttack && inputAttackWasPressed && stateAttack < 2)
+        {
+            stateAttack++;
+            AnimationTrigger("Attack");
+        }
+    }
+
+    public void ResetAttack()
+    {
+        stateAttack = 0;
+    }
 
     private void OnDrawGizmos() 
     {
