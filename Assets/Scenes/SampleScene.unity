@@ -349,6 +349,7 @@ MonoBehaviour:
     m_Bits: 128
   canAttack: 1
   stateAttack: 0
+  impulseAttack: 1
 --- !u!50 &335527646
 Rigidbody2D:
   serializedVersion: 4

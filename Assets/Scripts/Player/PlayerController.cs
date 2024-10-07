@@ -1,6 +1,5 @@
 using System.Collections;
 using System.Collections.Generic;
-using Unity.VisualScripting;
 using UnityEngine;
 
 public class PlayerController : MonoBehaviour
@@ -10,6 +9,7 @@ public class PlayerController : MonoBehaviour
 
     [Header("Move Values")]
     public bool canMove;
+    private bool canFlip = true;
     private float moveX;
     public float speed;
     private bool isTouchingGround;
@@ -33,6 +33,8 @@ public class PlayerController : MonoBehaviour
     public bool canAttack = true;
     public int stateAttack = 0;
     private bool inputAttackWasPressed;
+    private bool isAttaking = false;
+    [SerializeField] float impulseAttack;
 
     private void Awake()
     {
@@ -73,13 +75,15 @@ public class PlayerController : MonoBehaviour
         {
             rb.velocity = new Vector2(moveX * speed, rb.velocity.y);
         }
+
+        if (canMove) canFlip = true;
         FlipSprite();
         #endregion
     }
 
     private void FlipSprite()
     {
-        if (moveX != 0 && moveX != wherePlayerSeeing)
+        if (canFlip && moveX != 0 && moveX != wherePlayerSeeing)
         {
             wherePlayerSeeing = (int)moveX;
             transform.Rotate(0f, 180f, 0f);
@@ -120,7 +124,7 @@ public class PlayerController : MonoBehaviour
     private void UpdateStates()
     {
 
-        if (rb.velocity.y < 0 && !isFalling)
+        if (rb.velocity.y < 0 && !isTouchingGround && !isFalling)
         {
             AnimationTrigger("Fall");
             isFalling = true;
@@ -132,6 +136,12 @@ public class PlayerController : MonoBehaviour
             isJumping = false;
             isFalling = false;
         }
+
+        if (isAttaking)
+        {
+            canMove = false; 
+            canFlip = false;
+        } 
     }
 
     private void CheckIsTouchingGround()
@@ -141,16 +151,31 @@ public class PlayerController : MonoBehaviour
 
     private void Attack()
     {
-        if (canAttack && inputAttackWasPressed && stateAttack < 2)
+        if (canAttack && !isAttaking && inputAttackWasPressed && stateAttack < 2)
         {
             stateAttack++;
             AnimationTrigger("Attack");
+            isAttaking = true;
+            canMove = false;
         }
     }
 
     public void ResetAttack()
     {
         stateAttack = 0;
+        canMove = true;
+        isAttaking = false;
+        canFlip = true;
+    }
+
+    public void CanNextAttack()
+    {
+        isAttaking = false;
+    }
+
+    public void ImpulseAttack()
+    {
+        rb.AddForce(Vector2.right * wherePlayerSeeing * impulseAttack, ForceMode2D.Impulse);
     }
 
     private void OnDrawGizmos() 
