@@ -4,181 +4,197 @@ using UnityEngine;
 
 public class PlayerController : MonoBehaviour
 {
-    private Rigidbody2D rb;
-    private Animator anim;
+    Rigidbody2D _rb;
+    Animator _anim;
 
-    [Header("Move Values")]
-    public bool canMove;
-    private bool canFlip = true;
-    private float moveX;
-    public float speed;
-    private bool isTouchingGround;
-    private int wherePlayerSeeing = 1;
+    public bool _canMove = true;
+    bool _canFlip = true;
+    float _moveX;
+    public float speed = 1.2f ;
+    bool _isTouchingGround;
+    int _wherePlayerSeeing = 1;
 
     [Header("Jump Values")]
-    [SerializeField] float jumpForce;
+    [SerializeField] float jumpForce = 3f;
     [SerializeField] float jumpAjust = 0.5f;
-    private bool canJump = false;
-    private bool inputJumpWasPressed;
-    private bool inputJumpWasRelease;
-    private bool isFalling = false;
-    private bool isJumping = false;
+    bool _canJump = false;
+    bool _inputJumpWasPressed;
+    bool _inputJumpWasRelease;
+    bool _isFalling = false;
+    bool _isJumping = false;
 
     [Header("Checking Ground")]
-    [SerializeField] float checkGroundRadius;
+    [SerializeField] float checkGroundRadius = 0.05f;
     [SerializeField] Transform checkGroundLocal;
     [SerializeField] LayerMask checkGroundLayer;
 
     [Header("Attacks")]
     public bool canAttack = true;
     public int stateAttack = 0;
-    private bool inputAttackWasPressed;
-    private bool isAttaking = false;
-    [SerializeField] float impulseAttack;
+    bool _inputAttackWasPressed;
+    bool _isAttaking = false;
+    [SerializeField] float impulseAttack = 1.5f;
 
-    private void Awake()
+    PlayerBaseState _currentState;
+    PlayerStateFactory _states;
+
+    // getters and setters
+
+    public PlayerBaseState CurrentState { get { return _currentState; } set{ _currentState = value; }}
+    public Rigidbody2D RB { get { return _rb; }}
+    public Animator Anim { get { return _anim; }}
+
+    void Awake()
     {
-        rb = GetComponent<Rigidbody2D>();
-        anim = GetComponent<Animator>();
+        _rb = GetComponent<Rigidbody2D>();
+        _anim = GetComponent<Animator>();
+
+        _states = new PlayerStateFactory(this);
+        _currentState = _states.Grounded();
+        _currentState.EnterState();
     }
 
-    private void Update()
+    protected virtual void Update()
     {
         CheckInputs();
+        _currentState.UpdateState();
         UpdateStates();
-        UpdateAnimation();
+        Update_animation();
         Jump();
         Attack();
     }
 
-    private void FixedUpdate() 
+    protected virtual void FixedUpdate() 
     {
         Move();
-
         #region All Checks
-        CheckIsTouchingGround();
+        Check_isTouchingGround();
         #endregion
     }
 
-    private void CheckInputs()
+    void CheckInputs()
     {
-        moveX = Input.GetAxisRaw("Horizontal");
-        inputJumpWasPressed = Input.GetKeyDown(KeyCode.Space);
-        inputJumpWasRelease = Input.GetKeyUp(KeyCode.Space);
-        inputAttackWasPressed = Input.GetMouseButtonDown(0);
+        _moveX = Input.GetAxisRaw("Horizontal");
+        _inputJumpWasPressed = Input.GetKeyDown(KeyCode.Space);
+        _inputJumpWasRelease = Input.GetKeyUp(KeyCode.Space);
+        _inputAttackWasPressed = Input.GetMouseButtonDown(0);
     }
 
-    private void Move()
+    void Move()
     {
         #region Moving in Ground
-        if (canMove && isTouchingGround)
+        if (_canMove && _isTouchingGround)
         {
-            rb.velocity = new Vector2(moveX * speed, rb.velocity.y);
+            _rb.velocity = new Vector2(_moveX * speed, _rb.velocity.y);
         }
 
-        if (canMove) canFlip = true;
+        if (_canMove) _canFlip = true;
         FlipSprite();
         #endregion
     }
 
-    private void FlipSprite()
+    void FlipSprite()
     {
-        if (canFlip && moveX != 0 && moveX != wherePlayerSeeing)
+        if (_canFlip && _moveX != 0 && _moveX != _wherePlayerSeeing)
         {
-            wherePlayerSeeing = (int)moveX;
+            _wherePlayerSeeing = (int)_moveX;
             transform.Rotate(0f, 180f, 0f);
         }
         
     }
 
-    private void Jump()
+    void Jump()
     {
-        if (isTouchingGround) canJump = true;
-        if (inputJumpWasPressed && canJump)
+        if (_isTouchingGround) _canJump = true;
+        if (_inputJumpWasPressed && _canJump)
         {
-            rb.velocity = new Vector2(rb.velocity.x * moveX, jumpForce);
-            AnimationTrigger("Jump");
-            isJumping = true;
-            canJump = false;
+            _rb.velocity = new Vector2(_rb.velocity.x * _moveX, jumpForce);
+            _animationTrigger("Jump");
+            _isJumping = true;
+            _canJump = false;
         }
         
-        if(inputJumpWasRelease && rb.velocity.y > 0f)
+        if(_inputJumpWasRelease && _rb.velocity.y > 0f)
         {
-            rb.velocity = new Vector2(rb.velocity.x, rb.velocity.y * jumpAjust);
+            _rb.velocity = new Vector2(_rb.velocity.x, _rb.velocity.y * jumpAjust);
         }
     }
 
-    private void UpdateAnimation()
+    void Update_animation()
     {
-        anim.SetBool("IsFalling", isFalling);
-        anim.SetBool("IsJumping", isJumping);
-        anim.SetBool("IsWalking", rb.velocity.x != 0);
-        anim.SetInteger("qualAtaque", stateAttack);
+        _anim.SetBool("_IsFalling", _isFalling);
+        _anim.SetBool("_IsJumping", _isJumping);
+        _anim.SetBool("IsWalking", _rb.velocity.x != 0);
+        _anim.SetInteger("qualAtaque", stateAttack);
     }
 
-    public void AnimationTrigger(string trigger)
+    /// <summary>
+    /// Metodo usado para ativar um trigger no _animator
+    /// </summary>
+    /// <param name="qua"></param>
+    public void _animationTrigger(string trigger)
     {
-        anim.SetTrigger(trigger);
+        _anim.SetTrigger(trigger);
     }
 
-    private void UpdateStates()
+    void UpdateStates()
     {
 
-        if (rb.velocity.y < 0 && !isTouchingGround && !isFalling)
+        if (_rb.velocity.y < 0 && !_isTouchingGround && !_isFalling)
         {
-            AnimationTrigger("Fall");
-            isFalling = true;
+            _animationTrigger("Fall");
+            _isFalling = true;
             
         }
 
-        if (rb.velocity.y == 0)
+        if (_rb.velocity.y == 0)
         {
-            isJumping = false;
-            isFalling = false;
+            _isJumping = false;
+            _isFalling = false;
         }
 
-        if (isAttaking)
+        if (_isAttaking)
         {
-            canMove = false; 
-            canFlip = false;
+            _canMove = false; 
+            _canFlip = false;
         } 
     }
 
-    private void CheckIsTouchingGround()
+    void Check_isTouchingGround()
     {
-        isTouchingGround = Physics2D.OverlapCircle(checkGroundLocal.position, checkGroundRadius, checkGroundLayer);
+        _isTouchingGround = Physics2D.OverlapCircle(checkGroundLocal.position, checkGroundRadius, checkGroundLayer);
     }
 
-    private void Attack()
+    void Attack()
     {
-        if (canAttack && !isAttaking && inputAttackWasPressed && stateAttack < 2)
+        if (canAttack && !_isAttaking && _inputAttackWasPressed && stateAttack < 2)
         {
             stateAttack++;
-            AnimationTrigger("Attack");
-            isAttaking = true;
-            canMove = false;
+            _animationTrigger("Attack");
+            _isAttaking = true;
+            _canMove = false;
         }
     }
 
     public void ResetAttack()
     {
         stateAttack = 0;
-        canMove = true;
-        isAttaking = false;
-        canFlip = true;
+        _canMove = true;
+        _isAttaking = false;
+        _canFlip = true;
     }
 
     public void CanNextAttack()
     {
-        isAttaking = false;
+        _isAttaking = false;
     }
 
     public void ImpulseAttack()
     {
-        rb.AddForce(Vector2.right * wherePlayerSeeing * impulseAttack, ForceMode2D.Impulse);
+        _rb.AddForce(Vector2.right * _wherePlayerSeeing * impulseAttack, ForceMode2D.Impulse);
     }
 
-    private void OnDrawGizmos() 
+    void OnDrawGizmos() 
     {
         Gizmos.color = Color.white;
         Gizmos.DrawWireSphere(checkGroundLocal.position, checkGroundRadius);
